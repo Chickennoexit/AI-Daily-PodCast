@@ -1,0 +1,21 @@
+# Cấu hình bỏ qua các tệp riêng tư khi push lên GitHub
+
+# File chứa API key và Token bảo mật
+.env
+
+# Cơ sở dữ liệu SQLite cục bộ
+database.db
+
+# Thư mục chứa audio tạm thời và các file mp3 thử nghiệm
+temp_audio/
+*.mp3
+
+# Các file cache của Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
