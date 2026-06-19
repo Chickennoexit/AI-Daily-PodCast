@@ -1,10 +1,14 @@
 import os
 import json
 import asyncio
+import logging
+import re
 import edge_tts
 import google.generativeai as genai
 from typing import Dict, List, Any, Tuple
 from src.database import AVAILABLE_TOPICS, AVAILABLE_VOICES
+
+logger = logging.getLogger(__name__)
 
 # Cấu hình Gemini
 def init_gemini(api_key: str):
@@ -73,13 +77,19 @@ Hãy trả về kết quả dưới định dạng JSON với cấu trúc sau:
             generation_config={"response_mime_type": "application/json"}
         )
         
-        result_json = json.loads(response.text.strip())
+        # Làm sạch chuỗi JSON nếu Gemini trả về markdown JSON block (ví dụ ```json ...)
+        response_text = response.text.strip()
+        if response_text.startswith("```"):
+            response_text = re.sub(r"^```(?:json)?\n", "", response_text)
+            response_text = re.sub(r"\n```$", "", response_text)
+            
+        result_json = json.loads(response_text)
         script = result_json.get("script", "")
         summary_text = result_json.get("summary_text", "")
         
         return script, summary_text
     except Exception as e:
-        print(f"Lỗi khi tạo kịch bản với Gemini: {e}")
+        logger.error(f"Lỗi khi tạo kịch bản với Gemini: {e}", exc_info=True)
         # Phương án dự phòng (fallback) nếu Gemini lỗi hoặc trả về sai định dạng
         script = f"Chào buổi sáng {username}. Đã có lỗi xảy ra trong quá trình tổng hợp tin tức hôm nay. Mong bạn thông cảm. Chúc bạn một ngày mới tốt lành!"
         summary_text = f"<b>Chào buổi sáng {username}!</b>\n\n⚠️ Đã xảy ra lỗi khi tổng hợp kịch bản podcast. Vui lòng thử lại sau."
@@ -99,7 +109,7 @@ async def text_to_speech(text: str, voice: str, output_path: str) -> bool:
         await communicate.save(output_path)
         return True
     except Exception as e:
-        print(f"Lỗi khi chuyển đổi Text-to-Speech: {e}")
+        logger.error(f"Lỗi khi chuyển đổi Text-to-Speech: {e}", exc_info=True)
         return False
 
 # Chạy thử nghiệm nếu gọi trực tiếp file này
