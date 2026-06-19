@@ -25,7 +25,7 @@ async def generate_podcast_content(
     Sử dụng Gemini để tổng hợp tin tức và viết kịch bản podcast.
     Trả về một tuple gồm: (kịch bản giọng nói, văn bản tóm tắt dạng HTML gửi kèm Telegram)
     """
-    model = genai.GenerativeModel("models/gemini-1.5-flash")
+    model = genai.GenerativeModel("models/gemini-2.5-flash")
     
     # Định dạng dữ liệu tin tức đầu vào thành chuỗi văn bản cho Gemini đọc
     news_context = ""
