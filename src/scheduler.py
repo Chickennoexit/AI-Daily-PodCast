@@ -33,7 +33,7 @@ async def start_scheduler(application):
                     
                     # Chạy tiến trình gửi độc lập cho từng user để tránh nghẽn vòng lặp
                     asyncio.create_task(
-                        generate_and_send_podcast(user_id, application.bot, username)
+                        generate_and_send_podcast(user_id, application.bot)
                     )
             
         except Exception as e:

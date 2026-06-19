@@ -116,14 +116,14 @@ def get_settings_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("📁 Thay đổi chủ đề quan tâm", callback_data="settings_menu_topics")],
         [InlineKeyboardButton("🗣️ Thay đổi giọng đọc podcast", callback_data="settings_menu_voice")],
         [InlineKeyboardButton("⏰ Thay đổi giờ nhận tin hàng ngày", callback_data="settings_menu_time")],
+        [InlineKeyboardButton("🏷️ Thay đổi tên xưng hô", callback_data="settings_menu_name")],
         [InlineKeyboardButton("❌ Đóng cài đặt", callback_data="settings_close")]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 async def generate_and_send_podcast(
     user_id: int, 
-    context: ContextTypes.DEFAULT_TYPE, 
-    username: str
+    context: ContextTypes.DEFAULT_TYPE
 ) -> bool:
     """
     Quy trình cốt lõi: Thu thập tin tức -> Gọi Gemini tạo kịch bản -> TTS -> Gửi qua Telegram.
@@ -133,6 +133,8 @@ async def generate_and_send_podcast(
     user = get_user(user_id)
     if not user:
         return False
+        
+    username = user.get("username") or "bạn"
         
     topics = get_user_topics(user_id)
     if not topics:
@@ -345,7 +347,7 @@ async def onboarding_settime_callback(update: Update, context: ContextTypes.DEFA
     )
     
     # Chạy quy trình tạo podcast nghe thử ngay lập tức
-    asyncio.create_task(generate_and_send_podcast(user_id, context, username))
+    asyncio.create_task(generate_and_send_podcast(user_id, context))
     
     return ConversationHandler.END
 
@@ -391,7 +393,7 @@ async def onboarding_custom_time_msg(update: Update, context: ContextTypes.DEFAU
     )
     
     # Chạy quy trình tạo podcast nghe thử
-    asyncio.create_task(generate_and_send_podcast(user_id, context, username))
+    asyncio.create_task(generate_and_send_podcast(user_id, context))
     
     return ConversationHandler.END
 
@@ -408,7 +410,6 @@ async def cancel_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 async def run_podcast_now(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Lệnh tạo podcast ngay lập tức."""
     user_id = update.effective_user.id
-    username = update.effective_user.first_name or "bạn"
     
     user = get_user(user_id)
     if not user or user.get("is_onboarding_completed") == 0:
@@ -418,7 +419,7 @@ async def run_podcast_now(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
         
     # Chạy quy trình tạo và gửi podcast
-    await generate_and_send_podcast(user_id, context, username)
+    await generate_and_send_podcast(user_id, context)
 
 # ----------------- /settings (Menu) Command -----------------
 
@@ -523,6 +524,16 @@ async def settings_callback_handler(update: Update, context: ContextTypes.DEFAUL
             parse_mode="HTML"
         )
         
+    elif action == "settings_menu_name":
+        await query.edit_message_text(
+            text="🏷️ <b>Thay đổi tên xưng hô trong podcast:</b>\n\n"
+                 "Vui lòng gõ lệnh sau ngoài khung chat để đổi tên xưng hô:\n"
+                 "<code>/setname tên_mới</code>\n"
+                 "Ví dụ: <code>/setname bạn</code> hoặc <code>/setname Anh Hiếu</code> hoặc <code>/setname Sếp</code>",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Quay lại", callback_data="settings_main")]]),
+            parse_mode="HTML"
+        )
+        
     elif action == "settings_close":
         await query.delete_message()
 
@@ -547,6 +558,23 @@ async def set_time_direct_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE
     create_or_update_user(user_id, schedule_time=time_arg)
     await update.message.reply_text(
         f"✅ Đã hẹn giờ thành công!\n👉 Bạn sẽ nhận bản tin vào lúc <b>{time_arg}</b> hàng ngày."
+    )
+
+async def set_name_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Lệnh đổi tên xưng hô /setname tên của người dùng."""
+    user_id = update.effective_user.id
+    if not context.args:
+        await update.message.reply_text(
+            "Cú pháp sử dụng: <code>/setname tên_của_bạn</code>\nVí dụ: <code>/setname bạn</code> hoặc <code>/setname Anh Hiếu</code>",
+            parse_mode="HTML"
+        )
+        return
+        
+    new_name = " ".join(context.args).strip()
+    create_or_update_user(user_id, username=new_name)
+    await update.message.reply_text(
+        f"✅ Đã cập nhật tên xưng hô của bạn thành: <b>{new_name}</b>",
+        parse_mode="HTML"
     )
 
 # ----------------- Bot Application Creator -----------------
@@ -595,6 +623,7 @@ def build_bot_app() -> Application:
     app.add_handler(CommandHandler("podcast", run_podcast_now))
     app.add_handler(CommandHandler("settings", settings_cmd))
     app.add_handler(CommandHandler("settime", set_time_direct_cmd))
+    app.add_handler(CommandHandler("setname", set_name_cmd))
     
     # Đăng ký callback cho menu cài đặt /settings
     app.add_handler(CallbackQueryHandler(settings_callback_handler, pattern="^settings_"))
