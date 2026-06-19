@@ -17,8 +17,7 @@ AVAILABLE_TOPICS = {
 # Giọng đọc mặc định mà edge-tts hỗ trợ
 AVAILABLE_VOICES = {
     "vi-VN-HoaiMyNeural": "Giọng Bắc - Nữ (Hoài My)",
-    "vi-VN-NamMinhNeural": "Giọng Bắc - Nam (Nam Minh)",
-    "vi-VN-AnNeural": "Giọng Nam - Nữ (An)"
+    "vi-VN-NamMinhNeural": "Giọng Bắc - Nam (Nam Minh)"
 }
 
 def get_connection(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
@@ -53,6 +52,9 @@ def init_db(db_path: str = DEFAULT_DB_PATH):
             FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
         )
     """)
+    
+    # Tự động sửa lỗi/di chuyển người dùng đã lỡ chọn giọng Nam (An) sang giọng Hoài My
+    cursor.execute("UPDATE users SET voice = 'vi-VN-HoaiMyNeural' WHERE voice = 'vi-VN-AnNeural'")
     
     conn.commit()
     conn.close()
